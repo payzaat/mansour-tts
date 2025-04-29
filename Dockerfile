@@ -16,7 +16,7 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 
 # -- build-time switches --
 ARG FLASH_ATTN=0
-ARG CUDA_COMPUTE_CAP=86                 # 3090 = sm 8.6
+ARG CUDA_COMPUTE_CAP=86
 ENV CUDA_COMPUTE_CAP=${CUDA_COMPUTE_CAP}
 
 WORKDIR /workspace
@@ -27,7 +27,7 @@ RUN if [ "$FLASH_ATTN" = "1" ]; then \
     else \
         cargo build --release --features cuda --bin server ; \
     fi \
- && strip target/release/server          # shrink binary ~2 MB
+ && strip target/release/server       
 
 ######################## 2️⃣  Runtime ########################
 FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04
