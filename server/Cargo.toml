@@ -1,0 +1,64 @@
+[package]
+name = "server"
+version = { workspace = true }
+edition = "2021"
+
+[lib]
+name = "server"
+path = "lib/lib.rs"
+
+[features]
+cuda = [
+    "candle-core/cuda",
+    "candle-nn/cuda",
+    "candle-transformers/cuda",
+    "moshi/cuda",
+]
+metal = [
+    "candle-core/metal",
+    "candle-nn/metal",
+    "candle-transformers/metal",
+    "moshi/metal",
+]
+flash-attn = ["cuda", "dep:candle-flash-attn"]
+mimi = ["dep:moshi"]
+
+
+[dependencies]
+anyhow = "1.0.86"
+async-stream = "0.3.6"
+axum = { version = "0.7.7", features = ["multipart"] }
+byteorder = "1.5.0"
+bytes = "1.8.0"
+candle-core = { workspace = true }
+candle-flash-attn = { workspace = true, optional = true }
+candle-nn = { workspace = true }
+candle-transformers = { workspace = true }
+clap = { version = "4.5.16", features = ["derive"] }
+futures = "0.3.31"
+futures-util = "0.3.31"
+hf-hub = "0.4.1"
+indicatif = "0.17.8"
+moshi = { version = "0.5.2", optional = true }
+num = "0.4.3"
+num-traits = "0.2.19"
+ogg = { version = "0.9.1", features = ["tokio-util", "async"] }
+opus = "0.3.0"
+rand = "0.8.5"
+regex = "1.10.6"
+rustfft = "6.2.0"
+serde = { version = "1.0.208", features = ["derive"] }
+serde_json = "1.0.127"
+symphonia = "0.5.4"
+tempfile = "3.14.0"
+thiserror = "1.0.63"
+tokenizers = { workspace = true }
+tokio = { version = "1.41.1", features = ["full"] }
+tokio-util = "0.7.12"
+tower = "0.5.1"
+tower-http = { version = "0.6.2", features = ["cors"] }
+tracing = "0.1.40"
+zip = "2.2.1"
+
+[dependencies.fish_speech_core]
+path = "../fish_speech_core"

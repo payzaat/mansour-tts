@@ -1,0 +1,41 @@
+[package]
+name = "fish_speech_core"
+version = { workspace = true }
+edition = "2021"
+
+[lib]
+name = "fish_speech_core"
+path = "lib/lib.rs"
+
+[features]
+cuda = [
+    "candle-core/cuda",
+    "candle-nn/cuda",
+    "candle-transformers/cuda",
+    "dep:candle-gqa-kernels",
+]
+metal = ["candle-core/metal", "candle-nn/metal", "candle-transformers/metal"]
+flash-attn = ["cuda", "dep:candle-flash-attn"]
+
+
+[dependencies]
+anyhow = "1.0.86"
+byteorder = "1.5.0"
+candle-core = { workspace = true }
+candle-flash-attn = { workspace = true, optional = true }
+candle-nn = { workspace = true }
+candle-transformers = { workspace = true }
+clap = { version = "4.5.16", features = ["derive"] }
+indicatif = "0.17.8"
+num = "0.4.3"
+num-traits = "0.2.19"
+rand = "0.8.5"
+rayon = "1.10.0"
+regex = "1.10.6"
+rustfft = "6.2.0"
+serde = { version = "1.0.208", features = ["derive"] }
+candle-gqa-kernels = { path = "../candle-gqa-kernels", optional = true }
+serde_json = "1.0.127"
+symphonia = "0.5.4"
+thiserror = "1.0.63"
+tokenizers = { workspace = true }
