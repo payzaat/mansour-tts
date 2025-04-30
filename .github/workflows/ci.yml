@@ -11,7 +11,7 @@ env:
 
 jobs:
   docker:
-    runs-on: ubuntu-latest # 14-GB disk now sufficient
+    runs-on: ubuntu-latest-xl
     permissions:
       contents: read
       packages: write
