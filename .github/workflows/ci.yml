@@ -11,18 +11,20 @@ env:
 
 jobs:
   docker:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest # 14-GB disk; ok now that cache export is light
     permissions:
       contents: read
       packages: write
 
     steps:
+      # 1️⃣  Checkout code
       - uses: actions/checkout@v4
 
-      # Buildx + QEMU for multi-arch (even if you only ship amd64)
+      # 2️⃣  Multi-arch builder (even if you only publish amd64)
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
 
+      # 3️⃣  Login to GHCR
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
@@ -30,6 +32,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # 4️⃣  Build & push — **no provenance/SBOM**, cache stored in GHA
       - name: Build & push
         uses: docker/build-push-action@v5
         with:
@@ -39,9 +42,12 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+          # ---- lighter cache strategy ----
+          provenance: false # disable ~100 MB attestation layer  [oai_citation:2‡GitHub](https://github.com/marketplace/actions/build-and-push-docker-images?utm_source=chatgpt.com)
+          sbom: false # disable SBOM layer
+          cache-from: type=gha # metadata only, quick upload
+          cache-to: type=gha,mode=max
 
-      # Quick smoke test (no GPU on the runner)
+      # 5️⃣  Smoke-test (CPU only)
       - name: fish-speech --help
         run: docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest fish-speech --help
