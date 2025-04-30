@@ -1,41 +1,19 @@
 """
-RunPod Serverless handler for Fish-Speech (lazy checkpoint download).
+RunPod Serverless handler for Fish-Speech.
 
-• Downloads all required Fish-Speech-1.5 files into /tmp on first boot
-  (~1 GB, ~50 s). Subsequent cold starts reuse RunPod’s cached layer.
-• Starts one Fish-Speech server on port 3000.
-• Accepts OpenAI-compatible JSON ("input", "voice", "response_format").
-• Returns WAV (base-64) or streams OGG chunks (base-64).
+• Uses checkpoint cloned into /app/checkpoints/fish-speech-1.5
+• Starts one server on port 3000, guarded by a semaphore (1 req / GPU).
+• Accepts OpenAI-compatible JSON ({ "input": "...", ... }).
+• Returns base-64 WAV or streams base-64 OGG chunks.
 """
 
-import os, time, asyncio, base64, subprocess, traceback, shutil, urllib.request, pathlib, sys
+import os, time, asyncio, base64, subprocess, traceback
 import runpod, aiohttp, httpx
 
-# ────────── 0. Lazy-download checkpoint ──────────
-CKPT_DIR = "/tmp/fish-speech-1.5"
-FILES = {
-    "model.safetensors":
-        "https://huggingface.co/fishaudio/fish-speech-1.5/resolve/main/fish-speech-1.5.safetensors",
-    "config.json":
-        "https://huggingface.co/fishaudio/fish-speech-1.5/resolve/main/config.json",
-    "tokenizer.json":
-        "https://huggingface.co/fishaudio/fish-speech-1.5/resolve/main/tokenizer.json",
-    "special_tokens_map.json":
-        "https://huggingface.co/fishaudio/fish-speech-1.5/resolve/main/special_tokens_map.json",
-    "dual_ar.bin":
-        "https://huggingface.co/fishaudio/fish-speech-1.5/resolve/main/dual_ar.bin"
-}
-pathlib.Path(CKPT_DIR).mkdir(parents=True, exist_ok=True)
-for name, url in FILES.items():
-    dest = f"{CKPT_DIR}/{name}"
-    if not os.path.exists(dest):
-        print(f"[handler] Downloading {name} …", file=sys.stderr, flush=True)
-        with urllib.request.urlopen(url) as src, open(dest, "wb") as dst:
-            shutil.copyfileobj(src, dst)
-
-# ────────── 1. Launch Fish-Speech server ──────────
-FISH_PORT = int(os.getenv("FISH_PORT", 3000))
-VOICE_DIR = "/app/voices"
+# ───────────── Launch Fish-Speech ─────────────
+FISH_PORT   = int(os.getenv("FISH_PORT", 3000))
+VOICE_DIR   = "/app/voices"
+CKPT_DIR    = "/app/checkpoints/fish-speech-1.5"
 
 server = subprocess.Popen([
     "fish-speech",
@@ -44,7 +22,7 @@ server = subprocess.Popen([
     "--checkpoint", CKPT_DIR
 ])
 
-# wait for /health
+# Wait until /health returns 200
 for _ in range(60):
     try:
         if httpx.get(f"http://127.0.0.1:{FISH_PORT}/health", timeout=2).status_code == 200:
@@ -57,7 +35,7 @@ else:
 FISH_URL = f"http://127.0.0.1:{FISH_PORT}/v1/audio/speech"
 GPU_SEMAPHORE = asyncio.Semaphore(1)
 
-# ────────── 2. Handler ──────────
+# ───────────── Handler ─────────────
 async def handler(job):
     inp   = job.get("input", {})
     text  = inp.get("input", "")
@@ -94,5 +72,5 @@ async def handler(job):
             traceback.print_exc()
             return {"error": f"handler exception: {str(e)}"}
 
-# ────────── 3. Start RunPod loop ──────────
+# ───────────── Start RunPod loop ─────────────
 runpod.serverless.start({"handler": handler})
